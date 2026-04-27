@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 中文 PBL 智能设计助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4 md:p-8">
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+        <h1 class="text-3xl font-extrabold mb-2 text-indigo-700">AI 中文 PBL 智能设计助手</h1>
+        <p class="text-slate-500 mb-8">专为阿联酋中文教学设计 | 内部测试版</p>
+        
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">年级 / 学段</label>
+                    <select id="grade" class="w-full border-slate-200 border p-3 rounded-xl bg-white">
+                        <script>for(let i=1; i<=12; i++) document.write(`<option value="Grade ${i}">Grade ${i}</option>`);</script>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">学生中文水平</label>
+                    <select id="level" class="w-full border-slate-200 border p-3 rounded-xl bg-white">
+                        <script>for(let i=1; i<=6; i++) document.write(`<option value="Level ${i}">Level ${i}</option>`);</script>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">单元主题</label>
+                <input type="text" id="topic" placeholder="例如：我的健康生活" class="w-full border-slate-200 border p-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">目标词汇与句型</label>
+                <textarea id="words" class="w-full border-slate-200 border p-3 rounded-xl h-32 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="请输入本单元的核心词汇..."></textarea>
+            </div>
+            
+            <button onclick="generatePBL()" id="btn" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">生成 PBL 方案</button>
+        </div>
+
+        <div id="result" class="mt-10 hidden border-t border-slate-100 pt-8">
+            <div id="pblContent" class="bg-slate-50 p-6 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-serif"></div>
+        </div>
+    </div>
+
+    <script>
+        async function generatePBL() {
+            const btn = document.getElementById('btn');
+            const pblContent = document.getElementById('pblContent');
+            const resultDiv = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.innerText = "专家正在为您设计中...";
+            resultDiv.classList.remove('hidden');
+            pblContent.innerText = "正在调用云端 AI 接口，请稍候...";
+
+            const promptText = `你是一名阿联酋教育部(MoE)中文教学专家。请根据以下信息设计一个PBL方案：
+            年级：${document.getElementById('grade').value}，
+            水平：${document.getElementById('level').value}，
+            主题：${document.getElementById('topic').value}。
+            词汇：${document.getElementById('words').value}。
+            要求包含驱动问题、四课时步骤、中英阿三语对照和评价量规。请结合阿联酋本土文化。`;
+
+            try {
+                // 【核心改动】不再传 Key，而是调用本地接口
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptText })
+                });
+
+                const resData = await response.json();
+                pblContent.innerText = resData.candidates[0].content.parts[0].text;
+            } catch (error) {
+                pblContent.innerText = "糟糕，生成失败。请检查后台 Key 配置是否正确。";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "生成 PBL 方案";
+            }
+        }
+    </script>
+</body>
+</html>
