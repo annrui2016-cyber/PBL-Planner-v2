@@ -4,21 +4,18 @@ export default async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
     const { prompt } = req.body;
 
-    if (!apiKey) {
-        return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 为空" });
-    }
-
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": "Bearer " + apiKey.trim(), // 使用最稳妥的字符串拼接，并自动去掉多余空格
+                "Authorization": "Bearer " + apiKey.trim(),
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://vercel.com",
-                "X-Title": "Chinese PBL Planner"
+                "X-Title": "PBL Planner"
             },
             body: JSON.stringify({
-                "model": "google/gemini-flash-1.5",
+                // 修改点：使用 OpenRouter 官方最标准的模型 ID
+                "model": "google/gemini-flash-1.5", 
                 "messages": [{ "role": "user", "content": prompt }]
             })
         });
@@ -30,9 +27,10 @@ export default async function handler(req, res) {
                 candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
             });
         } else {
-            res.status(500).json({ error: "OpenRouter 报错: " + JSON.stringify(data.error) });
+            // 如果报错，把 OpenRouter 返回的详细 JSON 直接吐出来供我们排查
+            res.status(500).json({ error: "API返回详情: " + JSON.stringify(data) });
         }
     } catch (error) {
-        res.status(500).json({ error: "服务器通讯异常: " + error.message });
+        res.status(500).json({ error: "通讯异常: " + error.message });
     }
 }
