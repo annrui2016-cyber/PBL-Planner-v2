@@ -1,38 +1,38 @@
 export default async function handler(req, res) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    // 检查点 1：确认钥匙有没有读到
+    const apiKey = process.env.GEMINI_API_KEY;
+    const { prompt } = req.body;
+
     if (!apiKey) {
-        return res.status(500).json({ error: "Vercel 没读到 API Key，请检查环境变量名是否完全一致。" });
+        return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 为空" });
     }
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${apiKey}`, // 这里的 Bearer 后面有个空格
+                "Authorization": "Bearer " + apiKey.trim(), // 使用最稳妥的字符串拼接，并自动去掉多余空格
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://vercel.com", // OpenRouter 有时需要这个
-                "X-Title": "PBL Planner"
+                "HTTP-Referer": "https://vercel.com",
+                "X-Title": "Chinese PBL Planner"
             },
             body: JSON.stringify({
                 "model": "google/gemini-flash-1.5",
-                "messages": [{ "role": "user", "content": req.body.prompt }]
+                "messages": [{ "role": "user", "content": prompt }]
             })
         });
 
         const data = await response.json();
 
-        // 检查点 2：确认 OpenRouter 的返回结构
         if (data.choices && data.choices[0]) {
             res.status(200).json({ 
                 candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
             });
         } else {
-            // 这里会打印 OpenRouter 报错的真实原因（比如：余额不足或模型不可用）
-            res.status(500).json({ error: data.error?.message || JSON.stringify(data) });
+            res.status(500).json({ error: "OpenRouter 报错: " + JSON.stringify(data.error) });
         }
     } catch (error) {
-        res.status(500).json({ error: "连接 OpenRouter 失败: " + error.message });
+        res.status(500).json({ error: "服务器通讯异常: " + error.message });
     }
 }
