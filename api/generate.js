@@ -1,36 +1,33 @@
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { prompt } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 自检：如果没读到 Key，直接报错
-    if (!apiKey) {
-        return res.status(500).json({ error: 'Vercel 后台没找到 GEMINI_API_KEY，请检查 Environment Variables 拼写' });
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
+                "model": "google/gemini-flash-1.5", // 依然使用 Gemini 模型
+                "messages": [{ "role": "user", "content": prompt }]
             })
         });
 
         const data = await response.json();
-
-        if (data.error) {
-            // 如果 Google 返回了错误（比如 Location not supported）
-            return res.status(500).json({ error: 'Google API 报错: ' + data.error.message });
+        
+        // OpenRouter 的返回格式稍微不同，我们要适配一下
+        if (data.choices && data.choices[0]) {
+            res.status(200).json({ 
+                candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
+            });
+        } else {
+            res.status(500).json({ error: data.error?.message || "中继服务调用失败" });
         }
-
-        res.status(200).json(data);
     } catch (error) {
-        res.status(500).json({ error: '网络连接故障: ' + error.message });
+        res.status(500).json({ error: "网络连接故障: " + error.message });
     }
 }
