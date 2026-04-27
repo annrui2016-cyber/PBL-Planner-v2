@@ -14,8 +14,8 @@ export default async function handler(req, res) {
                 "X-Title": "PBL_Planner"
             },
             body: JSON.stringify({
-                // 修改点：使用 OpenRouter 官方文档中最标准的 ID
-                "model": "google/gemini-2.0-flash-exp:free", 
+                // 修改点：这是 OpenRouter 数据库中最标准的 Gemini 1.5 Flash ID
+                "model": "google/gemini-flash-1.5", 
                 "messages": [{ "role": "user", "content": prompt }]
             })
         });
@@ -27,8 +27,8 @@ export default async function handler(req, res) {
                 candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
             });
         } else {
-            // 如果报错，它会打印出 OpenRouter 此时建议的模型列表或原因
-            res.status(500).json({ error: "OpenRouter 报错: " + (data.error?.message || "未知模型错误") });
+            // 如果还是 404，这里会输出 OpenRouter 报错的原始 JSON 内容
+            res.status(500).json({ error: "OpenRouter 报错: " + JSON.stringify(data) });
         }
     } catch (error) {
         res.status(500).json({ error: "连接异常: " + error.message });
