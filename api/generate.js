@@ -4,23 +4,19 @@ export default async function handler(req, res) {
     const apiKey = (process.env.GEMINI_API_KEY || "").trim();
     const { prompt } = req.body;
 
-    if (!apiKey) {
-        return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 未配置" });
-    }
-
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${apiKey}`,
+                "Authorization": "Bearer " + apiKey,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://vercel.com",
                 "X-Title": "PBL_Planner"
             },
             body: JSON.stringify({
-                "model": "google/gemini-flash-1.5", // 确认这个 ID 是 OpenRouter 的标准格式
-                "messages": [{ "role": "user", "content": prompt }],
-                "temperature": 0.7
+                // 修改点：使用 OpenRouter 官方文档中最标准的 ID
+                "model": "google/gemini-2.0-flash-exp:free", 
+                "messages": [{ "role": "user", "content": prompt }]
             })
         });
 
@@ -31,11 +27,10 @@ export default async function handler(req, res) {
                 candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
             });
         } else {
-            console.error("OpenRouter Response:", data);
-            res.status(500).json({ error: "API返回详情: " + JSON.stringify(data.error || data) });
+            // 如果报错，它会打印出 OpenRouter 此时建议的模型列表或原因
+            res.status(500).json({ error: "OpenRouter 报错: " + (data.error?.message || "未知模型错误") });
         }
     } catch (error) {
-        console.error("Fetch Error:", error.message);
-        res.status(500).json({ error: "网络请求异常: " + error.message });
+        res.status(500).json({ error: "连接异常: " + error.message });
     }
 }
