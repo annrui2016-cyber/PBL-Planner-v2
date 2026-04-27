@@ -1,38 +1,41 @@
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method !== 'POST') return res.status(405).json({ error: '仅支持 POST' });
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = (process.env.GEMINI_API_KEY || "").trim();
     const { prompt } = req.body;
+
+    if (!apiKey) {
+        return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 未配置" });
+    }
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": "Bearer " + apiKey.trim(),
+                "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://vercel.com",
-                "X-Title": "PBL Planner"
+                "X-Title": "PBL_Planner"
             },
             body: JSON.stringify({
-                // 使用 OpenRouter 目前最标准的 Gemini 模型 ID
-                "model": "google/gemini-flash-1.5", 
-                "messages": [{ "role": "user", "content": prompt }]
+                "model": "google/gemini-flash-1.5", // 确认这个 ID 是 OpenRouter 的标准格式
+                "messages": [{ "role": "user", "content": prompt }],
+                "temperature": 0.7
             })
         });
 
         const data = await response.json();
 
-        // 如果成功返回
         if (data.choices && data.choices[0]) {
             res.status(200).json({ 
                 candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] 
             });
         } else {
-            // 这里会把 404 的具体原因吐出来
-            console.error("OpenRouter Error Details:", data);
-            res.status(500).json({ error: "OpenRouter 报错: " + JSON.stringify(data.error || data) });
+            console.error("OpenRouter Response:", data);
+            res.status(500).json({ error: "API返回详情: " + JSON.stringify(data.error || data) });
         }
     } catch (error) {
-        res.status(500).json({ error: "服务器通讯异常: " + error.message });
+        console.error("Fetch Error:", error.message);
+        res.status(500).json({ error: "网络请求异常: " + error.message });
     }
 }
